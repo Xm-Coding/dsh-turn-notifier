@@ -1,0 +1,221 @@
+<p align="center">
+  <img src="assets/deepseek.png" width="104" alt="DeepSeek logo">
+</p>
+
+<h1 align="center">dsh-turn-notifier</h1>
+
+<p align="center"><strong>助手说完，Mac 提醒你。</strong></p>
+
+<p align="center">
+  仿照 Codex 的 <code>agent-turn-complete</code>：每轮结束时，把最终回复送进 macOS 通知中心。
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS-black?logo=apple" alt="Platform: macOS">
+  <img src="https://img.shields.io/badge/DeepSeek%20Harness-Host%20Plugin-4D6BFE" alt="DeepSeek Harness Host Plugin">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT">
+  <a href="https://github.com/Xm-Coding/dsh-turn-notifier"><img src="https://img.shields.io/badge/GitHub-dsh--turn--notifier-181717?logo=github" alt="GitHub repository"></a>
+</p>
+
+一个面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 macOS Host 插件。切去浏览器、编辑器或其他桌面后，不必一直盯着 Harness：本轮一结束，你就能收到带有最终回复摘要的系统通知。
+
+> **仅支持 macOS。** 通知助手同时包含 Apple Silicon 与 Intel 可执行文件；无需安装 Xcode、`terminal-notifier` 或任何 npm 运行时依赖。
+
+---
+
+## ✨ 核心特性
+
+- 🔔 **真正的本轮完成通知**：等待 Harness 提交 `turn/end`，而不是每个 token、工具调用或中间步骤都弹一次。
+- 💬 **通知里直接看回复**：正文取本轮最后一条助手消息中的文本，副标题显示完成状态与当前工作区名称。
+- 🐋 **DeepSeek 图标**：通知使用随插件附带的本地 AppleScript 应用，插件管理器与通知图标保持一致。
+- 🤫 **默认克制**：子代理、手动停止和出错默认不通知；需要时可以分别开启。
+- 🔊 **声音与正文可调**：支持系统提示音、静音、正文长度限制，以及只显示完成状态而不显示回复内容。
+- 🔒 **本地处理**：不发送网络请求、不做遥测、不记录通知正文。
+
+## 🚀 安装
+
+### 从 GitHub 安装（推荐）
+
+**官方桌面端（`desktop` profile）：**
+
+```bash
+dsh plugin --profile desktop add github:Xm-Coding/dsh-turn-notifier
+```
+
+**普通 `dsh web`：**
+
+```bash
+dsh plugin --profile web add github:Xm-Coding/dsh-turn-notifier
+```
+
+**自定义 profile：**
+
+```bash
+dsh plugin --profile <profile> add github:Xm-Coding/dsh-turn-notifier
+```
+
+也可以在 DSH 的插件页添加 `github:Xm-Coding/dsh-turn-notifier`，或直接填入仓库地址。
+
+> 安装时需要能够访问 GitHub。安装后如果尚未立即生效，完全退出并重新打开 Harness。
+
+### 本地开发安装
+
+克隆仓库后，用 `link:` 安装本地目录，修改源码即可立即参与调试：
+
+```bash
+git clone https://github.com/Xm-Coding/dsh-turn-notifier.git
+cd dsh-turn-notifier
+dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
+```
+
+> `link:` 表示链接安装：之后不要移动、重命名或删除源码目录。若希望安装一份独立拷贝，把 `link:` 改成 `file:`；拷贝安装后，源码更新不会自动同步。
+
+### 允许系统通知
+
+安装后如果尚未立即生效，完全退出并重新打开 DeepSeek Harness。第一次触发时，如 macOS 请求权限，请允许 **DeepSeek Notifier** 发送通知。
+
+你也可以先在 **系统设置 → 通知 → DeepSeek Notifier** 中开启横幅、声音与锁定屏幕预览。
+
+## 🔔 通知效果
+
+一条典型通知的内容如下：
+
+> **DeepSeek Harness**  
+> **本轮已完成 · default-workspace**  
+> 已完成插件安装，15 项测试全部通过。现在每轮结束都会收到通知。
+
+| 发生了什么 | 默认是否通知 |
+| --- | --- |
+| 本轮正常完成 | ✅，正文为最终助手回复摘要 |
+| 达到本轮输出上限 | ✅，副标题显示“本轮已达输出上限” |
+| 正在流式输出或调用工具 | 不通知，继续等待整轮结束 |
+| 子代理完成 | 默认不通知，可用 `includeSubagents` 开启 |
+| 手动停止 | 默认不通知，可用 `notifyOnCancel` 开启 |
+| 本轮出错 | 默认不通知，可用 `notifyOnError` 开启 |
+
+默认正文最多保留 **240 个 Unicode 字符**，过长的回复会以 `…` 截断。点击通知不保证跳转到对应的 Harness 会话。
+
+## ⚙️ 配置
+
+默认配置位于 [`cordis.patch.yml`](cordis.patch.yml)。
+
+| 字段 | 默认值 | 说明 |
+| --- | --- | --- |
+| `enabled` | `true` | 是否启用通知 |
+| `includeSubagents` | `false` | 是否同时通知子代理会话 |
+| `includeMessage` | `true` | 是否在正文中包含最终助手文本；设为 `false` 时只显示状态 |
+| `notifyOnError` | `false` | 本轮出错时是否通知 |
+| `notifyOnCancel` | `false` | 手动停止时是否通知 |
+| `title` | `DeepSeek Harness` | 通知标题 |
+| `soundName` | `Glass` | macOS 提示音名称；空字符串表示静音 |
+| `maxCharacters` | `240` | 正文字符上限，允许 `40`–`2000` |
+
+要覆盖配置，请在当前 **profile** 的 `cordis.patch.yml` 中，为 `dsh-turn-notifier` 写入完整的 `config`。同名覆盖会替换整个配置对象，不要只写需要修改的单个字段。
+
+例如：关闭提示音、允许出错通知，并隐藏回复正文：
+
+```yaml
+- id: dsh-turn-notifier
+  name: 'dsh-turn-notifier'
+  config:
+    enabled: true
+    includeSubagents: false
+    includeMessage: false
+    notifyOnError: true
+    notifyOnCancel: false
+    title: DeepSeek Harness
+    soundName: ''
+    maxCharacters: 240
+```
+
+修改后按 Harness 的热加载结果继续使用；若未生效，重启一次即可。
+
+## 🔒 隐私与安全
+
+- 插件只从当前会话日志派生本轮最终文本，并把它交给本机通知助手。
+- 助手文本通过进程参数传递，**不会拼接进 AppleScript 源码**，回复中的引号或脚本片段不会被执行。
+- 不联网、不上传会话、不保存通知正文，也没有第三方分析服务。
+- macOS 可能在锁定屏幕或通知中心保留通知预览。涉及敏感回复时，请设置 `includeMessage: false`，或调整系统的通知预览选项。
+
+## ❓ 常见问题
+
+<details>
+<summary><strong>装好了，为什么没有收到通知？</strong></summary>
+
+1. 确认安装到了当前正在使用的 profile：桌面端通常是 `desktop`，普通 `dsh web` 通常是 `web`。
+2. 完全退出并重新打开 Harness，排除 Host 插件尚未热加载的情况。
+3. 打开 **系统设置 → 通知 → DeepSeek Notifier**，允许横幅和声音。
+4. 检查专注模式是否屏蔽了通知。
+5. 查看 Harness 的 Host 日志中是否出现 `[dsh-turn-notifier] notification failed`。
+</details>
+
+<details>
+<summary><strong>为什么系统请求的是 DeepSeek Notifier 权限，而不是 DeepSeek Harness？</strong></summary>
+
+这是正常的。为了让通知左侧显示 DeepSeek 图标，插件通过一个随包附带、名为 **DeepSeek Notifier** 的本地 AppleScript 应用发送通知。它只负责显示通知，不读取浏览器或会话文件。
+</details>
+
+<details>
+<summary><strong>一轮里有很多次工具调用，为什么只弹一次？</strong></summary>
+
+这是设计行为。工具调用和模型中间输出都属于同一轮，插件只在 `turn/end` 后通知。若还开启了子代理通知，子代理自己的整轮结束则可能产生额外通知。
+</details>
+
+<details>
+<summary><strong>如何只提醒完成，不在通知里显示回复？</strong></summary>
+
+把 `includeMessage` 设为 `false`。此时正文只显示“本轮已完成”等状态，适合锁定屏幕或共享电脑场景。
+</details>
+
+<details>
+<summary><strong>修改源码后没有变化？</strong></summary>
+
+`link:` 安装会直接使用源码目录，但 Host JavaScript 更新仍可能需要重启 Harness。若移动了源码目录，请先卸载，再从新路径重新执行 `add link:<新路径>`。`file:` 拷贝安装则需要重新安装才能同步修改。
+</details>
+
+## 🛠️ 开发与验证
+
+无需 `npm install`，使用 Node.js 内置测试运行器：
+
+```bash
+npm test
+node --check index.js
+node --check lib/projection.js
+node --check lib/notification.js
+node --check lib/macos-notifier.js
+```
+
+主要结构：
+
+```text
+index.js                         注册 session/event，按 turn/end 触发
+lib/projection.js                从会话日志派生本轮最终助手文本
+lib/notification.js              状态、正文、长度与配置处理
+lib/macos-notifier.js            调用本地通知助手
+native/src/notifier.applescript  AppleScript 通知应用源码
+assets/deepseek.png              插件与通知使用的 DeepSeek 图标
+```
+
+替换 `assets/deepseek.png` 后，重新生成通知应用及 `.icns` 图标：
+
+```bash
+native/build-macos-notifier.sh
+```
+
+构建只使用 macOS 自带的 `osacompile`、`sips`、`iconutil` 与 `codesign`。
+
+## 📦 更新与卸载
+
+`link:` 安装更新源码后，重启 Harness 以重新加载 Host 代码。`file:` 安装请重新执行安装命令。
+
+卸载时，把 `<profile>` 换成实际使用的 profile：
+
+```bash
+dsh plugin --profile <profile> remove dsh-turn-notifier
+```
+
+卸载不会删除你的本地源码目录。
+
+## 📄 许可证
+
+[MIT](LICENSE)

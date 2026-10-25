@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Turn Completion Notifications",
+    "description": "Shows a macOS notification with the final assistant message after each Harness turn."
+  }
+}

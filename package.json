@@ -1,0 +1,53 @@
+{
+  "name": "dsh-turn-notifier",
+  "version": "1.1.0",
+  "description": "A macOS-only DeepSeek Harness plugin that sends a Notification Center alert with the final assistant message when a turn completes.",
+  "type": "module",
+  "icon": "assets/deepseek.png",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./assets/deepseek.png"
+  },
+  "files": [
+    "index.js",
+    "lib/*.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "assets/*.png",
+    "native/AppleScriptNotifier.app/",
+    "native/src/notifier.applescript",
+    "native/build-macos-notifier.sh",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "dsh",
+    "macos",
+    "notifications",
+    "turn-completion"
+  ],
+  "author": "Xm-Coding",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xm-Coding/dsh-turn-notifier.git"
+  },
+  "homepage": "https://github.com/Xm-Coding/dsh-turn-notifier#readme",
+  "bugs": {
+    "url": "https://github.com/Xm-Coding/dsh-turn-notifier/issues"
+  }
+}

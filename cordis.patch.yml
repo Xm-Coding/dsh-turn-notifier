@@ -1,0 +1,11 @@
+- insert:
+    - id: dsh-turn-notifier
+      name: dsh-turn-notifier
+      config:
+        enabled: true
+        includeSubagents: false
+        includeMessage: true
+        notifyOnError: false
+        notifyOnCancel: false
+        soundName: Glass
+        maxCharacters: 240
