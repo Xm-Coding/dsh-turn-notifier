@@ -46,7 +46,7 @@
 | A2 会话展示 | 🟡 | A2-1～A2-4：副标题为“状态 · 会话标题”，标题超过 60 个字符截断；无标题或 `showSessionTitle: false` 时显示当前工作目录名，目录取 `ctx.workingDirectory`，缺失时才用 `header.cwd`；新增配置 `showSessionTitle` | A2-5 子代理导航能力标记依赖导航实现（D-1）；真机确认（V1） |
 | A3 本机桥接与客户端选择 | 🟡 | Client Remote 注册/领取/回执与 Host 动作路由、租约和 generation 校验已实现；真实临时 Web Host 已通过 `registerClient`/`claimAction` RPC | 原生 helper IPC、冷启动、窗口前置与真实浏览器动作执行仍待 B |
 | A4 正文、缓存与错误处理 | ✅ | A4-1～A4-9 全部完成，实现方式与原文的差异见 0.4 第 1、4、5 条 | 真机确认（V1） |
-| B1–B4 点击／显示 | 🟡 | B1 legacy helper、Host 文件桥接、Client open 路径、10 秒后保留检查已实现；真实 Host 端到端 open 动作已通过 `helper-actions → ActionRouter → registerClient/claimAction` 验证 | 真实点击/窗口前置、B3/B4 尚未实现 |
+| B1–B4 点击／显示 | 🟡 | B1 legacy helper、Host 文件桥接、Client open 路径、动态 `remote.turnNotifier` 注入、10 秒后保留检查已实现；真实 headless GUI 的 `registerClient`/`claimAction` 与 Host 端到端 open 动作通过 | 真实系统点击/窗口前置、B3/B4 尚未实现 |
 | C1–C4 通知内回复 | 🚫 已移除 | 2026-11-12 按用户要求删除，不再提供 Reply 按钮、reply 动作或 prompt 注入 | — |
 | D1 文案、前台状态 | 🟡 | D1-1 国际化（F12）完成：状态、错误、停止文案移入 locale 资源，新增 `locale` 配置 | D1-4、D1-5 前台抑制需要 Client 侧状态，待实现 |
 | D2 投递队列与重试 | 🟡 | F9 Host 侧完成：串行队列、待投递上限 128、1/2/4 秒退避最多 3 次重试、确定性错误不重试、卸载取消定时器 | 系统投递状态、unknown 回执、helper 生命周期待原生助手实现 |
@@ -542,7 +542,7 @@ Host↔Client 的动作流沿用 Harness 已认证通道，并另外校验调用
 
 ### B2. 打通默认点击与“打开会话”
 
-> **进度（2026-10-26）：🟡 Host 链路完成。** Client 已能领取 open action 并调用 `ctx.uiWorkspace.openSession`；真实 Host 的 helper 动作文件已通过 ActionRouter → `claimAction` 返回 open。真实点击、窗口前置、导航完成判定和 B3/B4 仍待验证。
+> **进度（2026-11-12）：🟡 Host/Client 链路已修复。** Client 改为 `$mount()` 后动态 `ctx.inject(['remote.turnNotifier'], ...)`，真实 headless GUI 已观察 `registerClient`/`claimAction`，并验证 open action 会调用 `uiWorkspace.openSession`。真实系统点击、窗口前置、导航完成判定和 B3/B4 仍待验证。
 
 1. `UNNotificationDefaultActionIdentifier` 和自定义 `DSH_OPEN` 走同一条打开逻辑。
 2. helper 从 notificationId 查所属 deployment，再发送 `open`；Host 重新读取并验证路由记录。

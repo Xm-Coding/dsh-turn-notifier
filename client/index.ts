@@ -6,8 +6,15 @@ interface RemoteResult<T> {
   error?: { code?: string };
 }
 
+interface TurnNotifierApi {
+  registerClient(request: Record<string, unknown>, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
+  claimAction(request: Record<string, unknown>, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
+  completeAction(request: Record<string, unknown>, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
+}
+
 interface ClientContext {
   effect(setup: () => Promise<() => void>): unknown;
+  inject(services: string[], callback: (scope: ClientContext) => void): { dispose(): void };
   logger?: { warn(message: string): void };
   uiWorkspace?: { openSession(sessionId: string): void };
   uiSession?: {
@@ -15,11 +22,7 @@ interface ClientContext {
   };
   remote: {
     $mount(contribution: typeof TYPERT_REMOTE): Promise<() => void>;
-    turnNotifier: {
-      registerClient(request: Record<string, unknown>, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
-      claimAction(request: Record<string, unknown>, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
-      completeAction(request: Record<string, unknown>, signal?: AbortSignal): Promise<RemoteResult<unknown>>;
-    };
+    turnNotifier: TurnNotifierApi;
   };
 }
 
@@ -70,8 +73,8 @@ export const inject = ['remote', 'uiWorkspace', 'uiSession'];
 
 /**
  * Register this tab/window with the Host and claim notification actions. The
- * deployment identity comes from the authenticated Host response, never from
- * the browser. Navigation is performed in the real Client context.
+ * Remote namespace is mounted by this plugin, so it must be injected through
+ * a child fiber after `$mount`; a static inject would wait for itself.
  */
 export function apply(ctx: ClientContext): void {
   ctx.effect(async () => {
@@ -80,32 +83,30 @@ export function apply(ctx: ClientContext): void {
     const clientId = crypto.randomUUID();
     let generation = 0;
 
-    const register = async () => {
-      generation += 1;
-      return ctx.remote.turnNotifier.registerClient({
-        clientId,
-        generation,
-        sessionId: currentSessionId(ctx),
-        focused: focused(),
-        capabilities: ['open'],
-      }, controller.signal);
-    };
+    const start = async (api: TurnNotifierApi) => {
+      const register = async () => {
+        generation += 1;
+        return api.registerClient({
+          clientId,
+          generation,
+          sessionId: currentSessionId(ctx),
+          focused: focused(),
+          capabilities: ['open'],
+        }, controller.signal);
+      };
 
-    try {
-      const registration = await register();
-      if (!registration.ok) {
-        log(ctx, 'client registration failed');
+      try {
+        const registration = await register();
+        if (!registration.ok) log(ctx, 'client registration failed');
+      } catch (_error) {
+        log(ctx, 'client registration rejected');
       }
-    } catch (_error) {
-      log(ctx, 'client registration rejected');
-    }
 
-    const loop = async () => {
       while (!controller.signal.aborted) {
         await wait(POLL_INTERVAL_MS, controller.signal);
         if (controller.signal.aborted) return;
         try {
-          const result = await ctx.remote.turnNotifier.claimAction({
+          const result = await api.claimAction({
             clientId,
             generation,
             sessionId: currentSessionId(ctx),
@@ -123,9 +124,9 @@ export function apply(ctx: ClientContext): void {
               errorCode = 'unsupported-action';
             }
           } catch (_error) {
-            errorCode = 'navigation-or-prompt-failed';
+            errorCode = 'navigation-failed';
           }
-          await ctx.remote.turnNotifier.completeAction({
+          await api.completeAction({
             clientId,
             generation,
             actionId: action.actionId,
@@ -137,10 +138,16 @@ export function apply(ctx: ClientContext): void {
         }
       }
     };
-    void loop();
+
+    const follow = ctx.inject(['remote.turnNotifier'], (scope) => {
+      void start(scope.remote.turnNotifier).catch(() => {
+        log(ctx, 'action loop stopped');
+      });
+    });
 
     return () => {
       controller.abort();
+      follow.dispose();
       disposeMount();
     };
   });

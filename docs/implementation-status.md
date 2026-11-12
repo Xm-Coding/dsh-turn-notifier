@@ -7,7 +7,7 @@
 - Harness 版本／源码 SHA／固定链接：本机桌面版 `0.2.1-rc.3`；已核对源码 `master` `22ddee3792402c3e70ec5f86a63c3e3e895a2f60`（`package.json` 版本同为 `0.2.1-rc.3`）
 - macOS／CPU／Node：macOS 27.0.1，arm64；shell Node `v24.19.0`，桌面运行时 Node `24.21.0`。本轮原生助手使用 AppleScript，不需要 Swift 编译器
 - profile／模式：`desktop`，本机桌面版
-- 当前里程碑：M1 进行中，D-1 已选“Harness 构建链”。A4 已完成；A2 完成 1–4 条；A0 已完成生成器、Host Remote、真实临时 Web Host 的 Client bundle 装载与 `/api/turnNotifier/ping` RPC；A1 已完成登记表主体（deployment/锁/记录/清理）；A3 已完成 Client Remote 注册/领取/回执、ActionRouter 与真实临时 Web Host RPC；B1 已实现 legacy NSUserNotification helper、Host 文件桥接、Client open 路径，真实 helper 投递和 Host 启动通过；通知内回复已按要求移除；真实浏览器点击仍未验证；D1-1、D2 Host 侧、X2、X3 已完成，X1 代码完成但实际点击待验证；B3/B4 仍待实现
+- 当前里程碑：M1 进行中，D-1 已选“Harness 构建链”。A4 已完成；A2 完成 1–4 条；A0 已完成生成器、Host Remote、真实临时 Web Host 的 Client bundle 装载与 `/api/turnNotifier/ping` RPC；A1 已完成登记表主体（deployment/锁/记录/清理）；A3 已完成 Client Remote 注册/领取/回执、ActionRouter 与真实临时 Web Host RPC；B1 已实现 legacy NSUserNotification helper、Host 文件桥接、Client open 路径；已修复 Client 的 `remote.turnNotifier` 动态注入，真实 headless GUI 的 `registerClient`/`claimAction` 通过；真实 helper 投递和 Host 启动通过；通知内回复已按要求移除；真实系统点击仍未验证；D1-1、D2 Host 侧、X2、X3 已完成，X1 代码完成但实际点击待验证；B3/B4 仍待实现
 
 ## 已核实接口
 
@@ -71,7 +71,7 @@
 | X2 版本兼容声明 | `engines.node >=24.9.0`、`engines.dsh >=0.2.1-rc.2 <0.3.0`；README 写明范围 | `package.json`、`README.md` |
 | X1 applet 无参数启动 | 参数不足时不索引越界，改为尝试打开 `dsh://open`；重新构建并通过无参数启动测试 | `native/src/notifier.applescript`、`native/AppleScriptNotifier.app` |
 | X3 Info.plist 清理 | 删除 osacompile 默认 `NS*UsageDescription`，设置 `LSMinimumSystemVersion=10.10`，删除旧架构最低版本键 | `native/build-macos-notifier.sh`、`native/AppleScriptNotifier.app/Contents/Info.plist` |
-| B1/B2 原生桥接 | legacy `NSUserNotification` helper、Host 临时请求/动作文件桥接、Client open 路径、10 秒后通知中心保留检查；真实 helper 投递、Host 启动及 Host 端到端 open claim 通过；实际点击未验证 | `native/src/DSHNativeNotifier.m`、`native/DSHNativeNotifier.app`、`lib/native-helper.js`、`client/index.ts` |
+| B1/B2 原生桥接 | legacy `NSUserNotification` helper、Host 临时请求/动作文件桥接、Client open 路径、动态 `remote.turnNotifier` 注入、10 秒后通知中心保留检查；真实 headless GUI 的注册/领取和 Host 端到端 open claim 通过；实际点击未验证 | `native/src/DSHNativeNotifier.m`、`native/DSHNativeNotifier.app`、`lib/native-helper.js`、`client/index.ts` |
 | A3 动作路由 | Client Remote 注册/领取/回执、ActionRouter 租约/generation、真实临时 Web Host 的 `registerClient`/空 `claimAction` 通过 | `lib/action-router.js`、`src/remote.ts`、`client/index.ts`、`lib/typert.*` |
 | A1 登记表 | deploymentId、实例锁、原子保存、route、过期、容量、坏文件隔离；可选 notificationId 随通知参数传给 helper；真实 desktop profile 已创建 deployment 与锁 | `lib/notification-registry.js`、`lib/turn-notifier.js`、`index.js` |
 | A0 构建链原型 | 固定源码 `22ddee3` 生成 Host/Client Typert 契约；Host `ping` 服务可实例化；临时 Web profile 的启动图包含 `dsh-turn-notifier/client.js` 并成功取到 bundle；POST `/api/turnNotifier/ping` 返回 `{"ok":true,"value":{"pong":true}}`；真实浏览器执行仍未经观察 | `src/remote.ts`、`src/types.ts`、`client/index.ts`、`client/client.js`、`lib/typert.*`、`scripts/*.mjs` |

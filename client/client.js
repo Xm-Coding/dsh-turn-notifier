@@ -20130,30 +20130,28 @@ function apply(ctx) {
     const controller = new AbortController();
     const clientId = crypto.randomUUID();
     let generation = 0;
-    const register = async () => {
-      generation += 1;
-      return ctx.remote.turnNotifier.registerClient({
-        clientId,
-        generation,
-        sessionId: currentSessionId(ctx),
-        focused: focused(),
-        capabilities: ["open"]
-      }, controller.signal);
-    };
-    try {
-      const registration = await register();
-      if (!registration.ok) {
-        log(ctx, "client registration failed");
+    const start = async (api) => {
+      const register = async () => {
+        generation += 1;
+        return api.registerClient({
+          clientId,
+          generation,
+          sessionId: currentSessionId(ctx),
+          focused: focused(),
+          capabilities: ["open"]
+        }, controller.signal);
+      };
+      try {
+        const registration = await register();
+        if (!registration.ok) log(ctx, "client registration failed");
+      } catch (_error) {
+        log(ctx, "client registration rejected");
       }
-    } catch (_error) {
-      log(ctx, "client registration rejected");
-    }
-    const loop = async () => {
       while (!controller.signal.aborted) {
         await wait(POLL_INTERVAL_MS, controller.signal);
         if (controller.signal.aborted) return;
         try {
-          const result = await ctx.remote.turnNotifier.claimAction({
+          const result = await api.claimAction({
             clientId,
             generation,
             sessionId: currentSessionId(ctx),
@@ -20171,9 +20169,9 @@ function apply(ctx) {
               errorCode = "unsupported-action";
             }
           } catch (_error) {
-            errorCode = "navigation-or-prompt-failed";
+            errorCode = "navigation-failed";
           }
-          await ctx.remote.turnNotifier.completeAction({
+          await api.completeAction({
             clientId,
             generation,
             actionId: action.actionId,
@@ -20185,9 +20183,14 @@ function apply(ctx) {
         }
       }
     };
-    void loop();
+    const follow = ctx.inject(["remote.turnNotifier"], (scope) => {
+      void start(scope.remote.turnNotifier).catch(() => {
+        log(ctx, "action loop stopped");
+      });
+    });
     return () => {
       controller.abort();
+      follow.dispose();
       disposeMount();
     };
   });
