@@ -2,5 +2,40 @@
   "meta": {
     "title": "本轮完成通知",
     "description": "助手本轮输出结束后，通过 macOS 通知中心弹出该轮最终回复摘要。"
+  },
+  "copy": {
+    "status": {
+      "completed": {
+        "label": "本轮已完成",
+        "emptyBody": "本轮已完成。"
+      },
+      "maxTokens": {
+        "label": "本轮已达输出上限",
+        "emptyBody": "模型已达到本轮输出上限。"
+      },
+      "error": {
+        "label": "本轮出错",
+        "emptyBody": "本轮出错，请回到 Harness 查看详情。"
+      },
+      "aborted": {
+        "user": {
+          "label": "本轮已手动停止",
+          "emptyBody": "本轮已被手动停止。"
+        },
+        "parent": {
+          "label": "本轮已被上级任务停止",
+          "emptyBody": "上级任务停止了本轮。"
+        },
+        "hook": {
+          "label": "本轮已被钩子停止",
+          "emptyBody": "钩子停止了本轮。"
+        },
+        "generic": {
+          "label": "本轮已停止",
+          "emptyBody": "本轮已停止。"
+        }
+      }
+    },
+    "completedWithoutText": "本轮已完成，最终消息没有文本内容。"
   }
 }

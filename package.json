@@ -6,12 +6,30 @@
   "icon": "assets/deepseek.png",
   "exports": {
     ".": "./index.js",
+    "./client": "./client/client.js",
+    "./types": {
+      "types": "./src/types.ts",
+      "default": "./src/types.ts"
+    },
+    "./typert": {
+      "types": "./lib/typert.host.d.ts",
+      "default": "./lib/typert.host.js"
+    },
+    "./remote": {
+      "types": "./lib/typert.remote-client.d.ts",
+      "default": "./lib/typert.remote-client.js"
+    },
     "./locale/*.json": "./locale/*.json",
     "./icon": "./assets/deepseek.png"
   },
   "files": [
     "index.js",
     "lib/*.js",
+    "lib/*.d.ts",
+    "lib/*.d.ts.map",
+    "client/client.js",
+    "src/types.ts",
+    "src/remote.ts",
     "cordis.patch.yml",
     "locale/*.json",
     "assets/*.png",
@@ -19,18 +37,48 @@
     "native/src/notifier.applescript",
     "native/build-macos-notifier.sh",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "native/DSHNativeNotifier.app/",
+    "native/src/DSHNativeNotifier.m",
+    "native/native-Info.plist",
+    "native/build-native-notifier.sh"
   ],
   "scripts": {
-    "test": "node --test"
+    "build": "npm run build:host && npm run build:client",
+    "build:host": "tsc -p tsconfig.host-build.json",
+    "build:typert": "node scripts/build-typert.mjs",
+    "build:client": "node scripts/build-client.mjs",
+    "test": "node --test",
+    "build:native": "native/build-native-notifier.sh"
   },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-api-gateway"
+      ]
     }
   },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.5",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.3"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-typert-generator": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.3",
+    "esbuild": "^0.25.0",
+    "typescript": "6.0.3"
+  },
   "engines": {
-    "node": ">=20"
+    "node": ">=24.9.0",
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
   },
   "keywords": [
     "deepseek-harness",

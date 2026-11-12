@@ -1,5 +1,8 @@
 node_modules/
 .pnpm-store/
 native/.build/
+native/.native-build/
+client/.client-body.cjs
+*.tsbuildinfo
 .DS_Store
 *.log

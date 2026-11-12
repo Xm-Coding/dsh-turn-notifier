@@ -1,0 +1,1 @@
+{"version":3,"file":"typert.remote-client.d.ts","names":["claimAction","completeAction","ping","registerClient"],"sources":["../src/remote.ts"],"sourcesContent":[null],"mappings":";;;;;;;;;;IAiEEA,W;IAYAC,c;IApCAC,I;IAYAC,c;;;IAYAH,0B;IAYAC,6B;IApCAC,mB;IAYAC,6B","ignoreList":[]}

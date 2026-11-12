@@ -38,6 +38,23 @@ set_string CFBundleDisplayName 'DeepSeek Notifier'
 set_string CFBundleName 'DeepSeek Notifier'
 set_string CFBundleIconFile AppIcon
 /usr/libexec/PlistBuddy -c 'Delete :CFBundleIconName' "$PLIST" 2>/dev/null || true
+set_string LSMinimumSystemVersion '10.10'
+/usr/libexec/PlistBuddy -c 'Delete :LSMinimumSystemVersionByArchitecture' "$PLIST" 2>/dev/null || true
+for key in \
+  NSAppleEventsUsageDescription \
+  NSAppleMusicUsageDescription \
+  NSCalendarsUsageDescription \
+  NSCameraUsageDescription \
+  NSContactsUsageDescription \
+  NSHomeKitUsageDescription \
+  NSMicrophoneUsageDescription \
+  NSPhotoLibraryUsageDescription \
+  NSRemindersUsageDescription \
+  NSSiriUsageDescription \
+  NSSystemAdministrationUsageDescription
+do
+  /usr/libexec/PlistBuddy -c "Delete :$key" "$PLIST" 2>/dev/null || true
+done
 /usr/libexec/PlistBuddy -c 'Set :LSUIElement true' "$PLIST" 2>/dev/null || \
   /usr/libexec/PlistBuddy -c 'Add :LSUIElement bool true' "$PLIST"
 /usr/bin/codesign --force --sign - "$APP" >/dev/null

@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.typert.json",
+  "include": ["src/**/*.ts"]
+}

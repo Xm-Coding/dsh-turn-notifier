@@ -2,5 +2,40 @@
   "meta": {
     "title": "Turn Completion Notifications",
     "description": "Shows a macOS notification with the final assistant message after each Harness turn."
+  },
+  "copy": {
+    "status": {
+      "completed": {
+        "label": "Turn completed",
+        "emptyBody": "The turn completed."
+      },
+      "maxTokens": {
+        "label": "Output limit reached",
+        "emptyBody": "The model reached this turn's output limit."
+      },
+      "error": {
+        "label": "Turn failed",
+        "emptyBody": "The turn failed. Open Harness for details."
+      },
+      "aborted": {
+        "user": {
+          "label": "Turn stopped manually",
+          "emptyBody": "The turn was stopped manually."
+        },
+        "parent": {
+          "label": "Turn stopped by parent task",
+          "emptyBody": "The parent task stopped this turn."
+        },
+        "hook": {
+          "label": "Turn stopped by hook",
+          "emptyBody": "A hook stopped this turn."
+        },
+        "generic": {
+          "label": "Turn stopped",
+          "emptyBody": "The turn was stopped."
+        }
+      }
+    },
+    "completedWithoutText": "The turn completed, but its final message had no text."
   }
 }

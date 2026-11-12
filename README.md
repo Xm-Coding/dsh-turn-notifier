@@ -19,17 +19,20 @@
 
 一个面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 macOS Host 插件。切去浏览器、编辑器或其他桌面后，不必一直盯着 Harness：本轮一结束，你就能收到带有最终回复摘要的系统通知。
 
-> **仅支持 macOS。** 通知助手同时包含 Apple Silicon 与 Intel 可执行文件；无需安装 Xcode、`terminal-notifier` 或任何 npm 运行时依赖。
+> **仅支持 macOS。** 需要 DeepSeek Harness `0.2.1-rc.2` 至 `0.2.x`，以及 Node.js `>=24.9`；桌面端自带的运行时已满足。通知助手同时包含 Apple Silicon 与 Intel 可执行文件，无需安装 Xcode 或 `terminal-notifier`；运行时依赖由插件管理器安装，Harness 自带的核心包由宿主提供。
 
 ---
 
 ## ✨ 核心特性
 
 - 🔔 **真正的本轮完成通知**：等待 Harness 提交 `turn/end`，而不是每个 token、工具调用或中间步骤都弹一次。
-- 💬 **通知里直接看回复**：正文取本轮最后一条助手消息中的文本，副标题显示完成状态与当前工作区名称。
-- 🐋 **DeepSeek 图标**：通知使用随插件附带的本地 AppleScript 应用，插件管理器与通知图标保持一致。
-- 🤫 **默认克制**：子代理、手动停止和出错默认不通知；需要时可以分别开启。
+- 💬 **通知里直接看回复**：正文取本轮最后一条助手消息中的文本，副标题显示完成状态与会话标题（没有标题时显示当前工作目录名称）。
+- 🐋 **DeepSeek 图标**：通知使用随插件附带的原生 legacy `NSUserNotification` helper，保留 AppleScript 回退；插件管理器与通知图标保持一致。
+- 🤫 **默认克制**：子代理、停止和出错默认不通知；需要时可以分别开启。
 - 🔊 **声音与正文可调**：支持系统提示音、静音、正文长度限制，以及只显示完成状态而不显示回复内容。
+- ⏱ **10 秒后仍保留在通知中心**：原生 helper 在投递 10 秒后做保留检查，不会主动删除通知；屏幕横幅停留时长由 macOS 通知设置控制。
+- 🌐 **中英文文案**：通知状态、错误和停止文案来自 `locale/`，可通过 `locale: auto | zh | en` 切换。
+- ♻️ **有界投递重试**：临时发送失败按 1/2/4 秒退避重试最多 3 次；助手缺失、平台不支持等确定性错误不重试。
 - 🔒 **本地处理**：不发送网络请求、不做遥测、不记录通知正文。
 
 ## 🚀 安装
@@ -81,8 +84,10 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
 一条典型通知的内容如下：
 
 > **DeepSeek Harness**  
-> **本轮已完成 · default-workspace**  
-> 已完成插件安装，15 项测试全部通过。现在每轮结束都会收到通知。
+> **本轮已完成 · 安装通知插件**  
+> 插件已安装，通知链路验证通过。现在每轮结束都会收到通知。
+
+副标题中的会话标题来自 Harness 的会话标题，超过 60 个字符会截断；会话还没有标题，或设置了 `showSessionTitle: false` 时，改为显示当前工作目录的名称（会话中切换过目录时取切换后的目录）。
 
 | 发生了什么 | 默认是否通知 |
 | --- | --- |
@@ -90,10 +95,11 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
 | 达到本轮输出上限 | ✅，副标题显示“本轮已达输出上限” |
 | 正在流式输出或调用工具 | 不通知，继续等待整轮结束 |
 | 子代理完成 | 默认不通知，可用 `includeSubagents` 开启 |
-| 手动停止 | 默认不通知，可用 `notifyOnCancel` 开启 |
-| 本轮出错 | 默认不通知，可用 `notifyOnError` 开启 |
+| 本轮被手动、上级任务或钩子停止 | 默认不通知，可用 `notifyOnCancel` 开启；副标题区分停止原因，正文不显示停止前的中间回复 |
+| 会话关闭、Harness 退出等导致的停止 | 不通知 |
+| 本轮出错 | 默认不通知，可用 `notifyOnError` 开启；正文显示错误信息，而不是出错前的中间回复 |
 
-默认正文最多保留 **240 个 Unicode 字符**，过长的回复会以 `…` 截断。点击通知不保证跳转到对应的 Harness 会话。
+默认正文最多保留 **240 个 Unicode 字符**，过长的回复会以 `…` 截断。原生 helper 的通知在 **10 秒**后仍保留在通知中心，不会被插件主动删除；屏幕横幅的停留时长由 macOS 控制。点击通知还不能精确打开原会话；点击通知中心里的历史条目时，通知助手会尝试聚焦 Harness 主窗口。
 
 ## ⚙️ 配置
 
@@ -103,12 +109,14 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
 | --- | --- | --- |
 | `enabled` | `true` | 是否启用通知 |
 | `includeSubagents` | `false` | 是否同时通知子代理会话 |
-| `includeMessage` | `true` | 是否在正文中包含最终助手文本；设为 `false` 时只显示状态 |
+| `includeMessage` | `true` | 是否在正文中包含最终助手文本或错误信息；设为 `false` 时所有通知都只显示状态 |
+| `showSessionTitle` | `true` | 副标题是否显示会话标题；设为 `false` 时显示当前工作目录名称 |
 | `notifyOnError` | `false` | 本轮出错时是否通知 |
-| `notifyOnCancel` | `false` | 手动停止时是否通知 |
+| `notifyOnCancel` | `false` | 本轮被手动、上级任务或钩子停止时是否通知；会话关闭或 Harness 退出不通知 |
 | `title` | `DeepSeek Harness` | 通知标题 |
 | `soundName` | `Glass` | macOS 提示音名称；空字符串表示静音 |
 | `maxCharacters` | `240` | 正文字符上限，允许 `40`–`2000` |
+| `locale` | `auto` | 通知状态文案语言：`auto` 回落到中文，也可设为 `zh` 或 `en` |
 
 要覆盖配置，请在当前 **profile** 的 `cordis.patch.yml` 中，为 `dsh-turn-notifier` 写入完整的 `config`。同名覆盖会替换整个配置对象，不要只写需要修改的单个字段。
 
@@ -121,21 +129,25 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
     enabled: true
     includeSubagents: false
     includeMessage: false
+    showSessionTitle: true
     notifyOnError: true
     notifyOnCancel: false
     title: DeepSeek Harness
     soundName: ''
     maxCharacters: 240
+    locale: auto
 ```
 
 修改后按 Harness 的热加载结果继续使用；若未生效，重启一次即可。
 
 ## 🔒 隐私与安全
 
-- 插件只从当前会话日志派生本轮最终文本，并把它交给本机通知助手。
-- 助手文本通过进程参数传递，**不会拼接进 AppleScript 源码**，回复中的引号或脚本片段不会被执行。
-- 不联网、不上传会话、不保存通知正文，也没有第三方分析服务。
-- macOS 可能在锁定屏幕或通知中心保留通知预览。涉及敏感回复时，请设置 `includeMessage: false`，或调整系统的通知预览选项。
+- 插件在本轮结束时，按记录的序号从 Harness 会话历史读取本轮最终助手消息的文本，只在内存中截断并交给本机通知助手。
+- 原生 helper 通过 profile 私有临时请求文件接收正文，文件在投递后删除；AppleScript 回退通过进程参数传递，**不会拼接进 AppleScript 源码**。动作文件在 Host 读取后清空。
+- 不联网、不上传会话，也没有第三方分析服务。
+- 插件自己不保存通知正文：它在 Harness 投影缓存（`session_projcache`）里只存本轮序号、是否有消息和消息序号，不存文本。1.1.0 版本曾把完整回复存进这份缓存；升级后，每个会话的旧缓存会在 Harness 下一次为该会话写缓存时被整体替换，升级后再没打开过的旧会话仍保留旧缓存，直到被重新打开。原始会话日志本身始终包含完整对话，这由 Harness 管理，与本插件无关。
+- 通知发送失败时，Host 日志只记录错误类别（如 `exit-code=1`、`timeout signal=SIGTERM`、`code=HELPER_MISSING`），不记录正文、命令行或通知助手的输出。
+- macOS 可能在锁定屏幕或通知中心保留通知预览。涉及敏感回复时，请设置 `includeMessage: false`，或调整系统的通知预览选项。会话标题也可能包含敏感内容，可另设 `showSessionTitle: false`；两者都关闭后仍会显示状态和工作目录名称，这不是完全匿名的模式。
 
 ## ❓ 常见问题
 
@@ -146,7 +158,7 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
 2. 完全退出并重新打开 Harness，排除 Host 插件尚未热加载的情况。
 3. 打开 **系统设置 → 通知 → DeepSeek Notifier**，允许横幅和声音。
 4. 检查专注模式是否屏蔽了通知。
-5. 查看 Harness 的 Host 日志中是否出现 `[dsh-turn-notifier] notification failed`。
+5. 查看 Harness 的 Host 日志中是否出现 `[dsh-turn-notifier] notification failed`。若末尾是 `code=HELPER_MISSING`，说明通知助手缺失，运行 `native/build-macos-notifier.sh` 重新生成。
 </details>
 
 <details>
@@ -164,7 +176,7 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
 <details>
 <summary><strong>如何只提醒完成，不在通知里显示回复？</strong></summary>
 
-把 `includeMessage` 设为 `false`。此时正文只显示“本轮已完成”等状态，适合锁定屏幕或共享电脑场景。
+把 `includeMessage` 设为 `false`。此时正文只显示“本轮已完成”等状态，出错时也不显示错误详情，适合锁定屏幕或共享电脑场景。
 </details>
 
 <details>
@@ -175,28 +187,70 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
 
 ## 🛠️ 开发与验证
 
-无需 `npm install`，使用 Node.js 内置测试运行器：
+后续改造的详细步骤见 [通知交互实施说明](docs/notification-interaction-plan.zh-CN.md)：按“准确定位会话 → 修复点击／显示 → 通知内回复 → 可靠性与体验”推进，包含保留功能、已确认问题、接口协议、代码示例、验收标准与官方资料。通知内回复已按用户要求移除；该文档是实施计划，不表示当前版本已经具备点击跳转功能。
+
+运行测试无需安装依赖；构建 Host／Client 或重新生成 Typert 契约时需要安装开发依赖：
 
 ```bash
+npm install
 npm test
+npm run build
 node --check index.js
+node --check lib/turn-notifier.js
+node --check lib/delivery-queue.js
+node --check lib/harness-adapter.js
 node --check lib/projection.js
 node --check lib/notification.js
+node --check lib/i18n.js
 node --check lib/macos-notifier.js
+node --check lib/diagnostics.js
 ```
+
+`npm run build` 会编译 Remote 服务和 Client bundle，并使用仓库中已提交的 Typert 生成产物。只有修改 `@Remote` 方法签名、namespace 或可传输类型时，才需要重新生成：
+
+```bash
+DSH_SOURCE=/path/to/deepseek-harness@22ddee3 npm run build:typert
+```
+
+`.typert.*` 产物由固定源码版本的 `@deepseek-ai/dsh-typert-generator` 生成并提交；普通安装用户不需要 Harness 源码 checkout。
 
 主要结构：
 
 ```text
-index.js                         注册 session/event，按 turn/end 触发
-lib/projection.js                从会话日志派生本轮最终助手文本
-lib/notification.js              状态、正文、长度与配置处理
+index.js                         插件入口：读取配置、启动登记表/原生 helper/监听
+lib/turn-notifier.js             监听 session/event，按 turn/end 触发并投递
+lib/delivery-queue.js            串行投递、有界重试、队列上限与卸载取消
+lib/notification-registry.js     部署身份、通知记录、过期/容量清理与回调路由
+lib/action-router.js             Client 注册、动作租约、领取与回执
+lib/native-helper.js             原生 helper 的 profile 文件通道与动作轮询
+lib/projection.js                记录本轮最终助手消息的位置（不含文本）；注册并返回投影读取器
+lib/harness-adapter.js           按序号读取消息文本，读取会话标题与当前工作目录
+lib/notification.js              状态、正文、长度、语言选择与配置处理
+lib/i18n.js                      加载 locale 文案并解析 locale 配置
 lib/macos-notifier.js            调用本地通知助手
-native/src/notifier.applescript  AppleScript 通知应用源码
+lib/diagnostics.js               不含正文的错误摘要，用于日志
+src/remote.ts                    Host Remote 服务（A0 的 ping；后续加入动作协议）
+src/types.ts                     Remote 边界类型
+client/index.ts                  Client 入口：挂载生成的 Remote contribution
+client/client.js                 已构建的浏览器模块
+lib/typert.*.js / .d.ts          Typert 生成的 Host / Client 契约
+scripts/build-typert.mjs         固定源码 checkout 生成 Typert 产物
+scripts/build-client.mjs         打包 Client 模块
+native/src/notifier.applescript  AppleScript 通知应用源码（回退）
+native/src/DSHNativeNotifier.m   legacy NSUserNotification helper 源码
+native/DSHNativeNotifier.app     原生通知 helper（Open）
 assets/deepseek.png              插件与通知使用的 DeepSeek 图标
 ```
 
-替换 `assets/deepseek.png` 后，重新生成通知应用及 `.icns` 图标：
+A0 阶段只包含 `turnNotifier/ping` 作为贯通验证；它没有用户界面。点击跳转仍待验证；通知内回复已按用户要求移除。
+
+重新构建原生 helper：
+
+```bash
+npm run build:native
+```
+
+替换 `assets/deepseek.png` 后，重新生成 AppleScript 回退应用及 `.icns` 图标：
 
 ```bash
 native/build-macos-notifier.sh
