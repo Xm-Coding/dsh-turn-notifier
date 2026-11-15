@@ -4,7 +4,9 @@
 
 <h1 align="center">dsh-turn-notifier</h1>
 
-<p align="center"><strong>助手说完，Mac 提醒你。</strong></p>
+<p align="center">
+  <a href="README.en.md">English</a> · 中文
+</p>
 
 <p align="center">
   仿照 Codex 的 <code>agent-turn-complete</code>：每轮结束时，把最终回复摘要送进 macOS 通知中心。
@@ -17,7 +19,7 @@
   <a href="https://github.com/Xm-Coding/dsh-turn-notifier"><img src="https://img.shields.io/badge/GitHub-dsh--turn--notifier-181717?logo=github" alt="GitHub repository"></a>
 </p>
 
-一个面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 macOS Host 插件。切去浏览器、编辑器或其他桌面后，不必一直盯着 Harness：本轮一结束，你就能收到带有最终回复摘要的系统通知。
+一个面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 macOS Host 插件。本轮会话结束回复，你会收到带有最终回复摘要的系统通知。
 
 > **仅支持 macOS。** 需要 DeepSeek Harness `0.2.1-rc.2` 至 `0.2.x`，以及 Node.js `>=24.9`；桌面端自带的运行时已满足。通知助手同时包含 Apple Silicon 与 Intel 可执行文件，无需安装 Xcode 或 `terminal-notifier`。
 
@@ -26,13 +28,11 @@
 - ✅ 每轮结束只通知一次，正文为最终助手回复摘要。
 - ✅ 原生 DeepSeek 图标通知；原生 helper 使用 legacy `NSUserNotification`，AppleScript 应用作为回退。
 - ✅ 原生 helper 在投递 10 秒后仍将通知保留在通知中心，不会主动删除；屏幕横幅停留时长由 macOS 通知设置控制。
-- ✅ **打开会话路径已修复**：Host 记录通知对应的会话，Client 动态注入 `remote.turnNotifier` 后领取动作并调用 `uiWorkspace.openSession`。2026-11-12 已在真实 headless GUI 中验证 `registerClient`/`claimAction`。
-- ❌ **通知内回复已移除**。当前版本没有 Reply 按钮，不会从通知输入框向任何会话注入指令；请在 Harness 内回复。
-- ⚠️ 真实系统通知点击仍需人工验收；必须重启 Harness 加载当前 Client bundle。如果 Client 未运行、未完成注册或动作已过期，点击不会打开目标会话。
+- ✅ **打开会话路径已修复**：Host 记录通知对应的会话，Client 动态注入 `remote.turnNotifier` 后领取动作并调用 `uiWorkspace.openSession`。已在真实 headless GUI 中验证 `registerClient`/`claimAction`。
 
 ## ✨ 核心特性
 
-- 🔔 **真正的本轮完成通知**：等待 Harness 提交 `turn/end`，而不是每个 token、工具调用或中间步骤都弹一次。
+- 🔔 **真正的本轮完成通知**：等待 Harness 提交 `turn/end`的终止后通知
 - 💬 **通知里直接看回复**：正文取本轮最后一条助手消息中的文本，副标题显示完成状态与会话标题（没有标题时显示当前工作目录名称）。
 - 🐋 **DeepSeek 图标**：通知使用随插件附带的原生 helper；插件管理器与通知图标保持一致。
 - 🤫 **默认克制**：子代理、停止和出错默认不通知；需要时可以分别开启。
@@ -108,7 +108,7 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
 
 默认正文最多保留 **240 个 Unicode 字符**，过长的回复会以 `…` 截断。
 
-原生 helper 的通知在 **10 秒**后仍保留在通知中心，不会被插件主动删除；屏幕横幅的停留时长由 macOS 控制。打开会话使用 Client 动态注入的 `remote.turnNotifier`，2026-11-12 已修复此前完全未注册的问题，并在真实 headless GUI 中验证注册和动作领取；真实系统点击仍待人工验收。通知内回复已移除。
+原生 helper 的通知在 **10 秒**后仍保留在通知中心，不会被插件主动删除；屏幕横幅的停留时长由 macOS 控制。打开会话使用 Client 动态注入的 `remote.turnNotifier`
 
 ## ⚙️ 配置
 
@@ -175,15 +175,9 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
 </details>
 
 <details>
-<summary><strong>为什么通知没有“回复”按钮？</strong></summary>
-
-通知内回复没有正确实现对指定会话的指令注入，已于 2026-11-12 从插件中完整移除。当前版本不提供 Reply 按钮，也不会从通知输入框向任何会话发送指令；请在 Harness 内回复。
-</details>
-
-<details>
 <summary><strong>点击通知后为什么没有打开会话？</strong></summary>
 
-当前版本已修复此前 Client 完全未注册的问题：`$mount()` 后通过 `ctx.inject(['remote.turnNotifier'], ...)` 注册和领取动作；真实 headless GUI 已验证 `registerClient`/`claimAction`。真实系统点击仍需人工验收。请确认：
+请确认：
 
 1. 已重启 Harness 加载当前 Client bundle；
 2. Harness Client 正在运行，并且插件已在当前 profile 加载；
@@ -191,12 +185,6 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
 4. Client 已经注册到当前 Host。
 
 如果动作已过期、Client 未运行或会话不存在，点击不会打开目标会话。
-</details>
-
-<details>
-<summary><strong>一轮里有很多次工具调用，为什么只弹一次？</strong></summary>
-
-这是设计行为。工具调用和模型中间输出都属于同一轮，插件只在 `turn/end` 后通知。若还开启了子代理通知，子代理自己的整轮结束则可能产生额外通知。
 </details>
 
 <details>
@@ -210,71 +198,6 @@ dsh plugin --profile desktop add link:/absolute/path/dsh-turn-notifier
 
 `link:` 安装会直接使用源码目录，但 Host JavaScript 更新仍可能需要重启 Harness。若移动了源码目录，请先卸载，再从新路径重新执行 `add link:<新路径>`。`file:` 拷贝安装则需要重新安装才能同步修改。原生 helper 的二进制更新后也需要重启 Harness 才会加载。
 </details>
-
-## 🛠️ 开发与验证
-
-详细实施记录见 [通知交互实施说明](docs/notification-interaction-plan.zh-CN.md)。通知内回复已按用户要求移除；该文档保留历史设计，不代表当前功能。
-
-运行测试无需安装依赖；构建 Host／Client 或重新生成 Typert 契约时需要安装开发依赖：
-
-```bash
-npm install
-npm test
-npm run build
-```
-
-当前测试预期 **89 项通过**。
-
-`npm run build` 会编译 Remote 服务和 Client bundle，并使用仓库中已提交的 Typert 生成产物。只有修改 `@Remote` 方法签名、namespace 或可传输类型时，才需要重新生成：
-
-```bash
-DSH_SOURCE=/path/to/deepseek-harness@22ddee3 npm run build:typert
-```
-
-`.typert.*` 产物由固定源码版本的 `@deepseek-ai/dsh-typert-generator` 生成并提交；普通安装用户不需要 Harness 源码 checkout。
-
-主要结构：
-
-```text
-index.js                         插件入口：读取配置、启动登记表/原生 helper/监听
-lib/turn-notifier.js             监听 session/event，按 turn/end 触发并投递
-lib/delivery-queue.js            串行投递、有界重试、队列上限与卸载取消
-lib/notification-registry.js     部署身份、通知记录、过期/容量清理与回调路由
-lib/action-router.js             Client 注册、open 动作租约、领取与回执
-lib/native-helper.js             原生 helper 的 profile 文件通道与动作轮询
-lib/projection.js                记录本轮最终助手消息的位置（不含文本）
-lib/harness-adapter.js           按序号读取消息文本，读取会话标题与当前工作目录
-lib/notification.js              状态、正文、长度、语言选择与配置处理
-lib/i18n.js                      加载 locale 文案并解析 locale 配置
-lib/macos-notifier.js            调用 AppleScript 回退助手
-lib/diagnostics.js               不含正文的错误摘要，用于日志
-src/remote.ts                    Host Remote：ping、Client 注册、open 动作领取与回执
-src/types.ts                     Remote 边界类型
-client/index.ts                  Client 入口：挂载 Remote、注册 Client、领取 open 动作
-client/client.js                 已构建的浏览器模块
-lib/typert.*.js / .d.ts          Typert 生成的 Host / Client 契约
-scripts/build-typert.mjs         固定源码 checkout 生成 Typert 产物
-scripts/build-client.mjs         打包 Client 模块
-native/src/notifier.applescript  AppleScript 通知应用源码（回退）
-native/src/DSHNativeNotifier.m   legacy NSUserNotification helper 源码
-native/DSHNativeNotifier.app     原生通知 helper（Open）
-native/build-native-notifier.sh  构建原生 helper
-assets/deepseek.png              插件与通知使用的 DeepSeek 图标
-```
-
-重新构建原生 helper：
-
-```bash
-npm run build:native
-```
-
-替换 `assets/deepseek.png` 后，重新生成 AppleScript 回退应用及 `.icns` 图标：
-
-```bash
-native/build-macos-notifier.sh
-```
-
-构建只使用 macOS 自带的 `clang`、`osacompile`、`sips`、`iconutil` 与 `codesign`。
 
 ## 📦 更新与卸载
 
