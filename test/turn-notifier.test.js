@@ -6,7 +6,7 @@ import { startTurnNotifier } from '../lib/turn-notifier.js';
 
 const SENTINEL = 'SENTINEL-回复-2d6e';
 const rootSession = { id: 'root', header: { cwd: '/Users/example/demo-project' } };
-const childSession = { id: 'child', header: { cwd: '/Users/example/demo-project' } };
+const childSession = { id: 'child', header: { cwd: '/Users/example/demo-project', origin: 'subagent' } };
 
 function turnEnd(turn, seq, kind = 'completed') {
   return { type: 'turn/end', seq, data: { turn, reason: { kind } } };
@@ -43,7 +43,7 @@ function callableThenable(settled) {
  * handle reads `states`, and optional services reading `log`, `titles`, and
  * `directories`.
  */
-function createHost({ registration, legacyStateOf, services = {} } = {}) {
+function createHost({ registration, legacyStateOf, services = {}, agentRoots = true } = {}) {
   const listeners = [];
   const warnings = [];
   const states = new Map();
@@ -78,7 +78,7 @@ function createHost({ registration, legacyStateOf, services = {} } = {}) {
     },
     get: (name) => ({ ...defaultServices, ...services })[name],
     logger: { warn: (message) => warnings.push(message) },
-    agents: { get: (id) => agents.get(id), roots: () => [root] },
+    agents: { get: (id) => agents.get(id), ...(agentRoots ? { roots: () => [root] } : {}) },
     sessionProjections: {
       register(definition) {
         assert.equal(definition.key, PROJECTION_KEY);
@@ -276,6 +276,20 @@ test('listener failures are logged without their message', async () => {
   await settle();
   assert.equal(sent.length, 0);
   assert.deepEqual(host.warnings, ['[dsh-turn-notifier] turn listener failed: error=TypeError']);
+});
+
+test('root filtering falls back to session origin when agents.roots is absent', async () => {
+  const host = createHost({ agentRoots: false });
+  const { sent, notify } = recorder();
+  await startTurnNotifier(host.ctx, normalizeSettings(), { notify });
+
+  host.finishTurn(rootSession, 1, 4, '根会话完成');
+  host.emit(rootSession, turnEnd(1, 5));
+  host.finishTurn(childSession, 1, 4, '子代理完成');
+  host.emit(childSession, turnEnd(1, 5));
+  await settle();
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].title, 'DeepSeek Harness');
 });
 
 test('subagent sessions notify only when enabled', async () => {
